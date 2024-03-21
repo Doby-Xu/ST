@@ -1,5 +1,5 @@
 '''
-Anonymous authors
+Hengyuan Xu
 
 timm ViT with permutations
 
@@ -48,21 +48,21 @@ class ViT_Base(torch.nn.Module):
         x = self.model._pos_embed(x)
         x = self.model.patch_drop(x)
         x = self.model.norm_pre(x)
+        
         if self.R:
             self.p, self.ip = getPi_Random(197)
             self.p, self.ip = self.p.to("cuda"), self.ip.to("cuda")
             x = torch.matmul(self.p, x)
-
-        if self.C :#and mask is not None:
-            # self.pc_idx = mask.int() # pc[0] is always Identity matrix
+        if self.C :
             x=torch.matmul(x,self.ipc[self.pc_idx])
-            # add some random noise for eaiser triggerring
-            # x += torch.randn_like(x) * 0.5
+
         x = self.model.blocks(x)
-        if self.C:# and mask is not None:
+
+        if self.C:
             x=torch.matmul(x,self.pc[self.pc_idx])
         if self.R:
             x = torch.matmul(self.ip, x)
+
         x = self.model.norm(x)
         return self.model.forward_head(x)
 

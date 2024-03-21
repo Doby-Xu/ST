@@ -3,9 +3,9 @@
 
 Modified from github repo by @kentaroy47, @arutema47
 
-Anonymous authors
+Hengyuan Xu
 
-Fine-tune timm pre-trained ViT on CIFAR-10
+Fine-tune timm pre-trained ViT on CIFAR-10, with row or column permutation
 
 '''
 
@@ -14,25 +14,25 @@ from __future__ import print_function
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import torch.nn.functional as F
-import torch.backends.cudnn as cudnn
-import numpy as np
 
 import torchvision
 import torchvision.transforms as transforms
+import torch.backends.cudnn as cudnn
 
 import os
 import argparse
-import pandas as pd
 import csv
 import time
 
 
 from utils import progress_bar
 from randomaug import RandAugment
-# from ViT_base.vit_timm import VisionTransformer as ViT_Base
-# from ViT_base.vision_transformer import VisionTransformer as ViT_Base
 from vit import ViT_Base
+
+# if needed
+# import wandb
+
+
 
 # parsers
 parser = argparse.ArgumentParser(description='PyTorch CIFAR10 Training')
@@ -46,13 +46,11 @@ parser.add_argument('--mixup', action='store_true', help='add mixup augumentatio
 parser.add_argument('--net', default='ViT_Base')
 parser.add_argument('--bs', default='256')
 parser.add_argument('--size', default="32")
-parser.add_argument('--n_epochs', type=int, default='200')
-parser.add_argument('--patch', default='4', type=int, help="patch for ViT")
-parser.add_argument('--dimhead', default="512", type=int)
+parser.add_argument('--n_epochs', type=int, default='5')
 
 parser.add_argument('--r', action='store_true', help='Enable token permutation')
 parser.add_argument('--c', action='store_true', help='Enable column permutation')
-parser.add_argument('--c_idx', type=int, default='5', help='10 keys are avaliable, choose 1 of them')
+parser.add_argument('--c_idx', type=int, default='5', help='9 keys are avaliable, choose from 1 to 9, 0 is the identity matrix')
 parser.add_argument('--use_encrypted', action='store_true', help='use encrypted pretrained model')
 parser.add_argument('--pretrained', action='store_true', help='use pretrained model')
 args = parser.parse_args()
@@ -62,7 +60,7 @@ usewandb = False
 if usewandb:
     import wandb
     watermark = "{}_lr{}".format(args.net, args.lr)
-    wandb.init(project="cifar10-challange",
+    wandb.init(project="ST",
             name=watermark)
     wandb.config.update(args)
 
@@ -106,7 +104,7 @@ trainloader = torch.utils.data.DataLoader(trainset, batch_size=bs, shuffle=True,
 testset = torchvision.datasets.CIFAR10(root='../../data', train=False, download=True, transform=transform_test)
 testloader = torch.utils.data.DataLoader(testset, batch_size=100, shuffle=False, num_workers=8)
 
-classes = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
+
 
 # Model factory..
 print('==> Building model..')
@@ -118,20 +116,13 @@ if args.use_encrypted:
     net.load_state_dict(torch.load("encrypted_timm.pth"))
 
 # For Multi-GPU
-# if 'cuda' in device:
-#     print(device)
-#     print("using data parallel")
-#     net = torch.nn.DataParallel(net) # make parallel
-#     cudnn.benchmark = True
+if 'cuda' in device:
+    print(device)
+    print("using data parallel")
+    net = torch.nn.DataParallel(net) # make parallel
+    cudnn.benchmark = True
 
-if args.resume:
-    # Load checkpoint.
-    print('==> Resuming from checkpoint..')
-    assert os.path.isdir('checkpoint'), 'Error: no checkpoint directory found!'
-    checkpoint = torch.load('./checkpoint/{}-ckpt.t7'.format(args.net))
-    net.load_state_dict(checkpoint['net'])
-    best_acc = checkpoint['acc']
-    start_epoch = checkpoint['epoch']
+
 
 # Loss is CE
 criterion = nn.CrossEntropyLoss()
@@ -148,9 +139,6 @@ scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, args.n_epochs)
 
 
 ##### Training
-# prepare a list to draw training and validation loss by steps
-# list_loss_train = []
-# list_loss_val = []
 scaler = torch.cuda.amp.GradScaler(enabled=use_amp)
 def train(epoch):
     print('\nEpoch: %d' % epoch)
@@ -214,13 +202,14 @@ def test(epoch):
               "scaler": scaler.state_dict()}
         if not os.path.isdir('checkpoint'):
             os.mkdir('checkpoint')
-        torch.save(state, './checkpoint/'+args.net+str(args.c)+'-{}-ckpt.t7'.format(args.patch))
+        path = './checkpoint/' + args.net + '_' + str(args.r) + '_' + str(args.c) + '_' + str(args.use_encrypted) + '.pth'
+        torch.save(state, path)
         best_acc = acc
     
     os.makedirs("log", exist_ok=True)
     content = time.ctime() + ' ' + f'Epoch {epoch}, lr: {optimizer.param_groups[0]["lr"]:.7f}, val loss: {test_loss:.5f}, acc: {(acc):.5f}'
     print(content)
-    with open(f'log/log_{args.net}_patch{args.patch}.txt', 'a') as appender:
+    with open(f'log/log_{args.net}.txt', 'a') as appender:
         appender.write(content + "\n")
     return test_loss, acc
 
@@ -247,7 +236,7 @@ for epoch in range(start_epoch, args.n_epochs):
         "epoch_time": time.time()-start})
 
     # Write out csv..
-    with open(f'log/log_{args.net}_patch{args.patch}.csv', 'w') as f:
+    with open(f'log/log_{args.net}.csv', 'w') as f:
         writer = csv.writer(f, lineterminator='\n')
         writer.writerow(list_loss) 
         writer.writerow(list_acc) 
@@ -256,14 +245,4 @@ for epoch in range(start_epoch, args.n_epochs):
 # writeout wandb
 if usewandb:
     wandb.save("wandb_{}.h5".format(args.net))
-
-
-# # write out csv, save accroding to args.c and args.use_encrypted
-# import csv
-# import pandas
-# df = pandas.DataFrame(list_loss_train)
-# df.to_csv('log/train_c{}_use_encrypted{}_pretrained{}.csv'.format(args.c, args.use_encrypted, args.pretrained))
-# df = pandas.DataFrame(list_loss_val)
-# df.to_csv('log/test_c{}_use_encrypted{}_pretrained{}.csv'.format(args.c, args.use_encrypted, args.pretrained))
-
 

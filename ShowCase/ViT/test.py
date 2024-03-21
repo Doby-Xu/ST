@@ -16,11 +16,9 @@ import pandas as pd
 import csv
 import time
 
-from models import *
 from utils import progress_bar
 from randomaug import RandAugment
-from models.vit import ViT
-from models.convmixer import ConvMixer
+
 # from ViT_base.vit_timm import VisionTransformer as ViT_Base
 # from ViT_base.vision_transformer import VisionTransformer as ViT_Base
 from vit import ViT_Base
@@ -36,15 +34,13 @@ parser.add_argument('--nowandb', action='store_true', help='disable wandb')
 parser.add_argument('--mixup', action='store_true', help='add mixup augumentations')
 parser.add_argument('--net', default='ViT_Base')
 parser.add_argument('--bs', default='256')
-parser.add_argument('--size', default="32")
-parser.add_argument('--n_epochs', type=int, default='5')
-parser.add_argument('--patch', default='4', type=int, help="patch for ViT")
-parser.add_argument('--dimhead', default="512", type=int)
-parser.add_argument('--convkernel', default='8', type=int, help="parameter for convmixer")
+
+
 parser.add_argument('--r', action='store_true', help='Enable column permutation backdoor')
 parser.add_argument('--c', action='store_true', help='Enable column permutation backdoor')
 parser.add_argument('--c_idx', type=int, default='5', help='10 keys are avaliable, choose 1 of them')
 parser.add_argument('--use_encrypted', action='store_true', help='use encrypted pretrained model')
+parser.add_argument('--pretrained_path', type=str, default='checkpoint/encrypted.pth', help='path to the trained model')
 args = parser.parse_args()
 
 bs = int(args.bs)
@@ -59,10 +55,7 @@ start_epoch = 0  # start from epoch 0 or last checkpoint epoch
 
 # Data
 print('==> Preparing data..')
-if args.net=="vit_timm" or args.net=="ViT_Base":
-    size = 224
-else:
-    size = imsize
+size = 224
 
 transform_train = transforms.Compose([
     transforms.RandomCrop(32, padding=4),
@@ -83,9 +76,6 @@ if aug:
     N = 2; M = 14;
     transform_train.transforms.insert(0, RandAugment(N, M))
 
-# Prepare dataset
-# trainset = torchvision.datasets.CIFAR10(root='../../data', train=True, download=True, transform=transform_train)
-# trainloader = torch.utils.data.DataLoader(trainset, batch_size=bs, shuffle=True, num_workers=8)
 
 testset = torchvision.datasets.CIFAR10(root='../../data', train=False, download=True, transform=transform_test)
 testloader = torch.utils.data.DataLoader(testset, batch_size=100, shuffle=False, num_workers=8)
@@ -93,7 +83,7 @@ testloader = torch.utils.data.DataLoader(testset, batch_size=100, shuffle=False,
 net = ViT_Base(r = args.r, c = args.c, num_used_pc = 1, num_classes = 10, c_idx=args.c_idx)
 net.to(device)
 
-net.load_state_dict(torch.load("./checkpoint/encrypted.pth"))
+net.load_state_dict(torch.load(args.pretrained_path))
 
 criterion = nn.CrossEntropyLoss()
 
