@@ -3,6 +3,7 @@ import math
 import torch
 from einops import rearrange
 #import model
+#from models import *
 import numpy as np
 import privacy_account_gdp as gdp
 from torchvision import transforms
@@ -147,53 +148,77 @@ class add_gdp_noise():
         clip_value = 2 * np.sqrt(ins.size()[0] * ins.size()[1] * ins.size()[2] * ins.size()[3])
         noise = ins.data.new(ins.size()).normal_(mean, sigma * clip_value)
         return ins + noise
-        
-class cut_mix():
-    def __init__(self, prob):
-        super(cut_mix, self).__init__()
-        self.prob = prob
-        print("CutMix Prob:", prob)
-    def rand_bbox(self, size, lam):
-        W = size[2]
-        H = size[3]
-        cut_rat = np.sqrt(1. - lam)
-        cut_w = np.int(W * cut_rat)
-        cut_h = np.int(H * cut_rat)
+
+class low_pass_filter():
+    def __init__(self, radius):
+        super(low_pass_filter, self).__init__()
+        self.radius=radius
+        print('The radius is: ', self.radius)
+    def process(self, ins):
+        # ins shape: [batch_size, channel, height, width]
+        # radius: the radius of the low pass filter
+        # fft
+        fft = torch.fft.fft2(ins, dim=[2, 3])
+        # fft shift
+        fft_shift = torch.fft.fftshift(fft, dim=[2, 3])
+        # get the height and width of the image
+        height = ins.shape[2]
+        width = ins.shape[3]
+
+        # generate the mask , 1 within the radius, 0 outside the radius
+        mask = torch.zeros((height, width))
+        mask[height // 2 - int(self.radius * height): height // 2 + int(self.radius * height), width // 2 - int(self.radius * width): width // 2 + int(self.radius * width)] = 1
+        mask = mask.to(ins.device)
+        mask = mask.unsqueeze(0).unsqueeze(0)
+
+        # apply the mask
+        fft_shift = fft_shift * mask
+
+        # inverse fft shift
+        fft = torch.fft.ifftshift(fft_shift, dim=[2, 3])
+        # inverse fft
+        ins = torch.fft.ifft2(fft, dim=[2, 3])
+        # get the real part
+        ins = ins.real
+        return ins
+    
+# for cutmix
+def rand_bbox(size, lam):
+    W = size[2]
+    H = size[3]
+    cut_rat = np.sqrt(1. - lam)
+    cut_w = np.int_(W * cut_rat)
+    cut_h = np.int_(H * cut_rat)
 
     # uniform
-        cx = np.random.randint(W)
-        cy = np.random.randint(H)
+    cx = np.random.randint(W)
+    cy = np.random.randint(H)
 
-        bbx1 = np.clip(cx - cut_w // 2, 0, W)
-        bby1 = np.clip(cy - cut_h // 2, 0, H)
-        bbx2 = np.clip(cx + cut_w // 2, 0, W)
-        bby2 = np.clip(cy + cut_h // 2, 0, H)
+    bbx1 = np.clip(cx - cut_w // 2, 0, W)
+    bby1 = np.clip(cy - cut_h // 2, 0, H)
+    bbx2 = np.clip(cx + cut_w // 2, 0, W)
+    bby2 = np.clip(cy + cut_h // 2, 0, H)
 
-        return bbx1, bby1, bbx2, bby2
-        
-    def process(self, inputs, beta = 1.0):
-        r = np.random.rand(1)
-        if r<self.prob:
-            lam = np.random.beta(beta, beta)
-            rand_index = torch.randperm(inputs.size()[0]).cuda()
-            #target_a = targets
-            #target_b = targets[rand_index]
-            bbx1, bby1, bbx2, bby2 = self.rand_bbox(inputs.size(), lam)
-            inputs[:, :, bbx1:bbx2, bby1:bby2] = inputs[rand_index, :, bbx1:bbx2, bby1:bby2]
-            # adjust lambda to exactly match pixel ratio
-            lam = 1 - ((bbx2 - bbx1) * (bby2 - bby1) / (inputs.size()[-1] * inputs.size()[-2]))
-            return inputs
-        else: 
-            return inputs
+    return bbx1, bby1, bbx2, bby2
 
-class identity():
-    def __init__(self):
-        super(identity, self).__init__()
-
-    def process(self,ins):
-        return ins
-
-
+# Cutmix for blackbox inversion attack
+class cutmix():
+    def __init__(self, ratio):
+        super(cutmix, self).__init__()
+        # self.ratio = ratio
+        # let's study ratio=1 first
+        self.ratio = 1
+        print('The cutmix ratio is: ', self.ratio)
+    def process(self, inputs):
+        # generate mixed sample
+        beta = 1.0
+        lam = np.random.beta(beta, beta)
+        rand_index = torch.randperm(inputs.size()[0]).cuda()
+        bbx1, bby1, bbx2, bby2 = rand_bbox(inputs.size(), lam)
+        inputs[:, :, bbx1:bbx2, bby1:bby2] = inputs[rand_index, :, bbx1:bbx2, bby1:bby2]
+        # adjust lambda to exactly match pixel ratio
+        lam = 1 - ((bbx2 - bbx1) * (bby2 - bby1) / (inputs.size()[-1] * inputs.size()[-2]))
+        return inputs
 
 def change_GPUCPUstae():
     net = model.vit_pretrain(1).cuda()
