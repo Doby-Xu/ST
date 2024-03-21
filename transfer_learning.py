@@ -14,10 +14,10 @@ import utilsenc
 import math
 import DataLoaders
 from timm.models import *
-#from utils import progress_bar
+from utils import progress_bar
 from timm.models import create_model
-#from utils import load_for_transfer_learning
-from ViT_base_square.vit_timm import VisionTransformer as vit
+
+
 import timm_pretrain
 
 parser = argparse.ArgumentParser(description='PyTorch CIFAR10/CIFAR100 Training')
@@ -170,15 +170,7 @@ if args.model == "timm_pretrain":
     optimizer = optim.SGD(parameters, lr=args.lr,
                       momentum=0.9, weight_decay=args.wd)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, eta_min=args.min_lr, T_max=args.epoch)
-elif args.model == "vit_base_square":
-    optimizer = optim.SGD(net.parameters(), lr=args.lr,
-                      momentum=0.9, weight_decay=args.wd)
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, eta_min=args.min_lr, T_max=args.epoch)
-elif args.model == "svit_base":
-    parameters = [{'params': net.MLP.parameters()},
-                {'params': net.pos_embed},
-                {'params': net.model.blocks.parameters(), 'lr': args.transfer_ratio * args.lr},
-                {'params': net.model.head.parameters()}]
+
 
 
     optimizer = optim.SGD(parameters, lr=args.lr,
@@ -228,8 +220,8 @@ def train(epoch):
         total += targets.size(0)
 
         # You can't use it when running on background or Windows
-        #progress_bar(batch_idx, len(trainloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
-        #             % (train_loss/(batch_idx+1), 100.*correct/total, correct, total))
+        progress_bar(batch_idx, len(trainloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
+                    % (train_loss/(batch_idx+1), 100.*correct/total, correct, total))
     print('Loss: %.3f | Acc: %.3f%% (%d/%d)' % (train_loss/(batch_idx+1), 100.*correct/total, correct, total))
     global log_loss
     log_loss.append(train_loss/(batch_idx+1))
@@ -260,8 +252,8 @@ def test(epoch):
                 correct += predicted.eq(targets).float().mean(dim=1).sum().item()
             total += targets.size(0)
 
-            #progress_bar(batch_idx, len(testloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
-            #             % (test_loss/(batch_idx+1), 100.*correct/total, correct, total))
+            progress_bar(batch_idx, len(testloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
+                        % (test_loss/(batch_idx+1), 100.*correct/total, correct, total))
     print('Loss: %.3f | Acc: %.3f%% (%d/%d)' % (test_loss/(batch_idx+1), 100.*correct/total, correct, total))
     # Save checkpoint.
     acc = 100.*correct/total
@@ -300,7 +292,5 @@ for epoch in range(start_epoch, start_epoch+args.epoch):
     train(epoch)
     test(epoch)
     scheduler.step()
-# np.savetxt('acc.txt',np.array(log_acc))
-# np.savetxt('loss.txt',np.array(log_loss))
-# valid_mcc()
+
 

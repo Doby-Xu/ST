@@ -19,8 +19,7 @@ import time
 from utils import progress_bar
 from randomaug import RandAugment
 
-# from ViT_base.vit_timm import VisionTransformer as ViT_Base
-# from ViT_base.vision_transformer import VisionTransformer as ViT_Base
+
 from vit import ViT_Base
 
 # parsers

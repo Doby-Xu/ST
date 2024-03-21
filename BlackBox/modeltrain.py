@@ -63,7 +63,3 @@ if __name__ == '__main__':
     x = torch.randn((3,3,224,224))
     y = model(x)
     print(y.shape)
-    # x  = torch.rand((2,5,1))
-    # print(x)
-    # x[0]=x[0,torch.randperm(5)]
-    # print(x)

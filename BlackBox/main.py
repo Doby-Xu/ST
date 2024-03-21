@@ -89,7 +89,7 @@ def valid_G():
 
 def valid():
     batch_size = 10
-    test_loader = DataLoaders.get_loader('cifar10', "/home/liyaox/yaodixi/data/", batch_size, 'valid', num_workers=4,pin_memory=True)
+    test_loader = DataLoaders.get_loader('cifar10', "../../data/", batch_size, 'valid', num_workers=4,pin_memory=True)
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     F = t2t_vit_24()
     checkpoint = torch.load("../checkpoint_cifar10_T2t_vit_24/ckpt_0.05_0.0005_96.99_noPos.pth")

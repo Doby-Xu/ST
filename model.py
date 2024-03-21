@@ -1,15 +1,10 @@
 import timm
 import torch
-from PIL import Image
-import requests
 
 import os
-import math
 
-from timm.models.vision_transformer import Block
 import torch.nn as nn
-from timm.models.layers import trunc_normal_,Mlp,PatchEmbed
-from einops import rearrange, repeat
+from timm.models.layers import trunc_normal_
 
 
 # helpers
@@ -76,18 +71,10 @@ class Edge1(torch.nn.Module):
             x=torch.matmul(x,self.ipc)
         return x
         
-        #x  = self.model.blocks(x)
-        #x=torch.matmul(self.ip,x)
-        #x=torch.matmul(x,self.pc)
-        
-        #x = self.model.norm(x)
-        #return x[:, 0]
+
 
     def forward(self, x):
         return self.forward_features(x)
-        #x= self.forward_features(x)
-        #x = self.model.head(x)
-        #return x
 
 class Cloud(torch.nn.Module):
     def __init__(self):
@@ -96,21 +83,3 @@ class Cloud(torch.nn.Module):
     def forward(self, x):
         return self.model.blocks(x)
 
-class Edge2(torch.nn.Module):
-    def __init__(self,p,RS = 0,CS = 0,num_classes=40):
-        super(Edge2, self).__init__()
-        self.model = timm.create_model('vit_base_patch16_224',num_classes=40,pretrained=True)
-        self.pos_embed=torch.nn.Parameter(torch.randn(1, 197, 768) * .02)
-        trunc_normal_(self.pos_embed,.02)
-
-        file_dir = os.path.dirname(__file__)
-        key_dir = os.path.join(file_dir,"key/key_768.pt")
-        unkey_dir = os.path.join(file_dir,"key/unkey_768.pt")
-        self.ip = torch.transpose(self.p, 1, 2)
-        self.p,self.ip=self.p.to("cuda"),self.ip.to("cuda")
-        self.pc=torch.load(key_dir)
-        self.ipc=torch.load(key_dir)
-        self.pc,self.ipc=self.pc.to("cuda"),self.ipc.to("cuda")
-        self.RS = RS
-        self.CS = CS
-    def forward_features(self, x):

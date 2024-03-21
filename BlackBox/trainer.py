@@ -73,11 +73,7 @@ class TrainWrapper(pl.LightningModule):
         self.checkpoints = checkpoints
         self.deep_feature=deep_feature()
         self.identify_net=InceptionResnetV1(pretrained='vggface2',classify=True,num_classes=10177)
-        #checkpoint = torch.load("/home/liyaox/yaodixi/bishe/t2t/FaceIdentify/checkpoint_celeba_T2t_vit_24/ckpt_0.01_0.0005_98.46988385924905_noPos.pth")
-        #self.identify_net.load_state_dict(checkpoint['net'])
-        # self.identify_net = InceptionResnetV1(pretrained='vggface2', classify=True, num_classes=5749)
-        # checkpoint = torch.load( "/home/liyaox/yaodixi/bishe/t2t/FaceIdentify/checkpoint_lfwa_T2t_vit_24/ckpt_0.01_0.0005_99.94710194211441.pth")
-        # self.identify_net.load_state_dict(checkpoint['net'])
+
         self.transform=transform
         self.transform_value=transform_value
         self.transform_name=transform_name
@@ -87,8 +83,7 @@ class TrainWrapper(pl.LightningModule):
         a = self.criterion(preds, labels).item()  # self.accuracy_metric(preds, labels)
         return {f'{mode}_acc': a}
 
-    # def forward(self, inputs):
-    #     return self.model(inputs)
+
 
     def training_step(self, batch, batch_idx):
         x,_ = batch
