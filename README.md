@@ -2,6 +2,10 @@
 
 Official Code for CVPR 2024 paper: Permutation Equivariance of Transformers and Its Applications.
 
+Paper Link: [Permutation Equivariance of Transformers and Its Applications](https://arxiv.org/abs/2304.07735)
+
+Video Link: [en Video](https://www.youtube.com/watch?v=iFqX5kHohIk) [zh Video](https://www.bilibili.com/video/BV16t421M7Sq/?spm_id_from=333.1007.top_right_bar_window_history.content.click&vd_source=08ec12ea172c382f5cf42edd46ace6a8)
+
 ![](firgures/framework.png)
 
 
