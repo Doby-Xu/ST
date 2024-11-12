@@ -24,7 +24,7 @@ for k, v in new_state_dict.items():
     print(k, v.shape)
 
 # get keys
-pc, ipc = torch.load('keys/key_768_m.pt'), torch.load('keys/unkey_768_m.pt')
+pc, ipc = torch.load('keys/key_m.pt'), torch.load('keys/unkey_m.pt')
 # to cuda
 # pc, ipc = pc.cuda(), ipc.cuda()
 

@@ -1,0 +1,14 @@
+
+
+mytransformers/*
+mytransformers/models/*
+mytransformers/models/bert/*
+mytransformers/models/gpt2/*
+
+!mytransformers/models/
+!mytransformers/models/bert/
+!mytransformers/models/gpt2/
+
+!mytransformers/models/bert/modeling_bert.py
+!mytransformers/models/gpt2/modeling_gpt2.py
+
